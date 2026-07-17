@@ -1,0 +1,48 @@
+<div style="max-width:640px;margin:0 auto;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:#1c2333;background:#ffffff;padding:24px;">
+  <h1 style="font-size:20px;margin:0 0 2px;">ticker<span style="color:#3b6fd4;">deck</span> morning brief</h1>
+  <p style="color:#6b7386;font-size:13px;margin:0 0 20px;">{{ date_label }}</p>
+
+  <h2 style="font-size:15px;margin:0 0 10px;">Worth a look first</h2>
+  {% for r in top %}
+  <div style="border:1px solid #e3e7ef;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+    <div style="font-size:15px;font-weight:700;">
+      {{ r.symbol }}
+      <span style="font-weight:400;color:#6b7386;font-size:13px;">{{ r.name }}</span>
+      <span style="float:right;font-weight:600;color:{{ '#1e8e64' if r.day >= 0 else '#cf3b50' }};">{{ "%+.2f"|format(r.day) }}%</span>
+    </div>
+    <div style="color:#3d4557;font-size:13px;margin-top:4px;">{{ r.reasons | join(" · ") }}</div>
+    {% for a in r.news %}
+    <div style="font-size:13px;margin-top:6px;">
+      <a href="{{ a.url }}" style="color:#3b6fd4;text-decoration:none;">{{ a.title }}</a>
+      <span style="color:#9aa1b2;"> — {{ a.provider }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <h2 style="font-size:15px;margin:20px 0 8px;">Your watchlist</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="color:#6b7386;text-align:left;">
+      <th style="padding:6px 8px;border-bottom:1px solid #e3e7ef;">Symbol</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #e3e7ef;text-align:right;">Close</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #e3e7ef;text-align:right;">Day</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #e3e7ef;text-align:right;">Week</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #e3e7ef;text-align:right;">Headlines</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #f0f2f7;font-weight:600;">{{ r.symbol }}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f0f2f7;text-align:right;">${{ "%.2f"|format(r.close) }}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f0f2f7;text-align:right;color:{{ '#1e8e64' if r.day >= 0 else '#cf3b50' }};">{{ "%+.2f"|format(r.day) }}%</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f0f2f7;text-align:right;color:{{ '#1e8e64' if r.week >= 0 else '#cf3b50' }};">{{ "%+.2f"|format(r.week) }}%</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f0f2f7;text-align:right;">{{ r.news_count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <p style="color:#9aa1b2;font-size:12px;margin-top:20px;border-top:1px solid #e3e7ef;padding-top:12px;">
+    Automated summary of your tickerdeck watchlist from public data (Yahoo Finance, delayed).
+    The ranking is a simple attention score (size of move + headline count + week trend) —
+    not a forecast and not investment advice.
+  </p>
+</div>

@@ -7,4 +7,12 @@ services:
       - ./data:/app/data
     environment:
       - DB_PATH=data/tickerdeck.db
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - DIGEST_TO=${DIGEST_TO:-}
+      - DIGEST_TIME=${DIGEST_TIME:-07:30}
+      - DIGEST_TZ=${DIGEST_TZ:-America/New_York}
+      - DIGEST_DAYS=${DIGEST_DAYS:-weekdays}
     restart: unless-stopped

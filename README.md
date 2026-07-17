@@ -16,6 +16,12 @@ click any ticker to see its latest news. Built as a hobby project for a
     year's volatility): median path plus an 80% confidence band over 3M / 6M / 1Y.
     A cone of statistically plausible outcomes — *not* a forecast or investment advice.
 - **Background poller** stores quotes in SQLite every 5 minutes, so trends build up over time
+- **Morning email brief** (optional) — every weekday at a set time, an email with your
+  watchlist's prior-day performance, week trend, headline counts, and a "worth a look
+  first" top-3 ranked by a transparent attention score (move size + news volume + week
+  trend). Preview it anytime at `/digest`; configure SMTP via `.env` (see `.env.example`).
+  A briefing, not stock picks — the scoring is deliberately simple and visible in
+  `app/digest.py`.
 - **Add/remove tickers** from the UI; new tickers are backfilled with intraday history
 - **Single container** — FastAPI + SQLite, no build step, no API keys
 

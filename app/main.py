@@ -2,17 +2,19 @@
 import asyncio
 import contextlib
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from app import charts, db, market, projection
+from app import charts, db, digest, emailer, market, projection
 
 POLL_SECONDS = 300
 
@@ -77,14 +79,61 @@ async def poller() -> None:
         await asyncio.sleep(POLL_SECONDS)
 
 
+def _digest_html(data: dict, date_label: str) -> str:
+    return templates.env.get_template("digest.html").render(
+        rows=data["rows"], top=data["top"], date_label=date_label
+    )
+
+
+def send_digest() -> None:
+    tz = ZoneInfo(os.environ.get("DIGEST_TZ", "America/New_York"))
+    date_label = datetime.now(tz).strftime("%A, %B %d, %Y")
+    data = digest.build()
+    if not data["rows"]:
+        log.warning("digest: no data, skipping send")
+        return
+    emailer.send(
+        f"tickerdeck morning brief — {date_label}",
+        _digest_html(data, date_label),
+        digest.as_text(data),
+    )
+    log.info("digest sent to %s", os.environ.get("DIGEST_TO"))
+
+
+def _seconds_until_next_digest() -> float:
+    tz = ZoneInfo(os.environ.get("DIGEST_TZ", "America/New_York"))
+    hh, mm = (os.environ.get("DIGEST_TIME", "07:30").split(":") + ["0"])[:2]
+    weekdays_only = os.environ.get("DIGEST_DAYS", "weekdays") != "daily"
+    now = datetime.now(tz)
+    candidate = now.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
+    while candidate <= now or (weekdays_only and candidate.weekday() >= 5):
+        candidate += timedelta(days=1)
+    return (candidate - now).total_seconds()
+
+
+async def digest_scheduler() -> None:
+    if not emailer.is_configured():
+        log.warning("digest: SMTP not configured — morning email disabled (see .env.example)")
+        return
+    while True:
+        wait = _seconds_until_next_digest()
+        log.info("digest: next send in %.1f hours", wait / 3600)
+        await asyncio.sleep(wait)
+        try:
+            await asyncio.to_thread(send_digest)
+        except Exception:
+            log.exception("digest send failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
-    task = asyncio.create_task(poller())
+    tasks = [asyncio.create_task(poller()), asyncio.create_task(digest_scheduler())]
     yield
-    task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await task
+    for task in tasks:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 app = FastAPI(title="tickerdeck", lifespan=lifespan)
@@ -127,6 +176,24 @@ async def add_ticker(request: Request, symbol: str = Form(...)):
 def remove_ticker(request: Request, symbol: str):
     db.remove_symbol(symbol.upper())
     return render_rows(request)
+
+
+@app.get("/digest", response_class=HTMLResponse)
+async def digest_preview():
+    """Browser preview of the morning email."""
+    tz = ZoneInfo(os.environ.get("DIGEST_TZ", "America/New_York"))
+    data = await asyncio.to_thread(digest.build)
+    return HTMLResponse(_digest_html(data, datetime.now(tz).strftime("%A, %B %d, %Y")))
+
+
+@app.post("/digest/send", response_class=HTMLResponse)
+async def digest_send_now():
+    """Manual trigger, mostly for testing SMTP setup."""
+    try:
+        await asyncio.to_thread(send_digest)
+    except Exception as exc:  # surface config errors to the browser
+        return HTMLResponse(f"<pre>Send failed: {exc}</pre>", status_code=500)
+    return HTMLResponse("<pre>Digest sent.</pre>")
 
 
 def render_panel(request: Request, symbol: str, tab: str, **ctx) -> HTMLResponse:

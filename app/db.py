@@ -45,6 +45,12 @@ def init_db() -> None:
             )
 
 
+def watchlist_entries() -> list[tuple[str, str]]:
+    with connect() as conn:
+        rows = conn.execute("SELECT symbol, name FROM watchlist ORDER BY symbol").fetchall()
+    return [(r["symbol"], r["name"] or r["symbol"]) for r in rows]
+
+
 def watchlist_symbols() -> list[str]:
     with connect() as conn:
         rows = conn.execute("SELECT symbol FROM watchlist ORDER BY symbol").fetchall()
