@@ -5,7 +5,7 @@
   </thead>
   <tbody>
     {% for r in rows %}
-    <tr class="ticker-row" hx-get="/panel/{{ r.symbol }}/news" hx-target="#news-panel" hx-swap="innerHTML">
+    <tr class="ticker-row" hx-get="/panel/{{ r.symbol }}" hx-target="#news-panel" hx-swap="innerHTML">
       <td class="sym">{{ r.symbol }}</td>
       <td class="name">{{ r.name }}</td>
       <td class="num">{% if r.price %}${{ "%.2f"|format(r.price) }}{% else %}—{% endif %}</td>

@@ -139,11 +139,35 @@ def _date_label(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%b %d, %Y")
 
 
+def _remember(response: HTMLResponse, **cookies: str) -> HTMLResponse:
+    """Persist the panel view so switching tickers keeps the same tab open."""
+    for key, value in cookies.items():
+        response.set_cookie(key, value, max_age=86400 * 30, path="/")
+    return response
+
+
+@app.get("/panel/{symbol}", response_class=HTMLResponse)
+async def panel(request: Request, symbol: str):
+    """Row click: open whichever tab (and period/horizon) was last active."""
+    tab = request.cookies.get("panel_tab", "news")
+    if tab == "chart":
+        return await panel_chart(request, symbol, request.cookies.get("chart_period", "6mo"))
+    if tab == "projection":
+        try:
+            days = int(request.cookies.get("proj_days", "126"))
+        except ValueError:
+            days = 126
+        return await panel_projection(request, symbol, days)
+    return await panel_news(request, symbol)
+
+
 @app.get("/panel/{symbol}/news", response_class=HTMLResponse)
 async def panel_news(request: Request, symbol: str):
     symbol = symbol.upper()
     articles = await asyncio.to_thread(market.fetch_news, symbol)
-    return render_panel(request, symbol, "news", articles=articles)
+    return _remember(
+        render_panel(request, symbol, "news", articles=articles), panel_tab="news"
+    )
 
 
 @app.get("/panel/{symbol}/chart", response_class=HTMLResponse)
@@ -158,7 +182,10 @@ async def panel_chart(request: Request, symbol: str, period: str = "6mo"):
         ctx["svg"] = charts.line_chart(closes, _date_label(points[0][0]), "today")
         ctx["high"], ctx["low"] = max(closes), min(closes)
         ctx["change"] = (closes[-1] - closes[0]) / closes[0] * 100
-    return render_panel(request, symbol, "chart", **ctx)
+    return _remember(
+        render_panel(request, symbol, "chart", **ctx),
+        panel_tab="chart", chart_period=period,
+    )
 
 
 @app.get("/panel/{symbol}/projection", response_class=HTMLResponse)
@@ -187,4 +214,7 @@ async def panel_projection(request: Request, symbol: str, days: int = 126):
             vol=sim["vol_annual"] * 100,
             horizon_label=horizon_label,
         )
-    return render_panel(request, symbol, "projection", **ctx)
+    return _remember(
+        render_panel(request, symbol, "projection", **ctx),
+        panel_tab="projection", proj_days=str(days),
+    )
