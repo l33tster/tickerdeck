@@ -1,0 +1,14 @@
+<h2>{{ symbol }} — latest news</h2>
+{% if articles %}
+<ul class="news-list">
+  {% for a in articles %}
+  <li>
+    <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+    <div class="meta">{{ a.provider }}{% if a.published %} · {{ a.published }}{% endif %}</div>
+    {% if a.summary %}<p>{{ a.summary }}…</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">No recent news found for {{ symbol }}.</p>
+{% endif %}

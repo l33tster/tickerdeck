@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tickerdeck</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <header>
+    <h1>ticker<span>deck</span></h1>
+    <form hx-post="/watchlist" hx-target="#rows" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+      <input name="symbol" placeholder="Add ticker (e.g. TSLA)" autocomplete="off" required>
+      <button type="submit">Add</button>
+    </form>
+  </header>
+  <main>
+    <section class="board">
+      <div id="rows" hx-get="/rows" hx-trigger="load, every 60s" hx-swap="innerHTML">
+        <p class="muted">Loading quotes…</p>
+      </div>
+    </section>
+    <aside id="news-panel">
+      <p class="muted">Click a ticker to see its latest news.</p>
+    </aside>
+  </main>
+  <footer class="muted">Data via Yahoo Finance (delayed). Hobby project — not investment advice.</footer>
+</body>
+</html>

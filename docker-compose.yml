@@ -1,0 +1,10 @@
+services:
+  tickerdeck:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DB_PATH=data/tickerdeck.db
+    restart: unless-stopped

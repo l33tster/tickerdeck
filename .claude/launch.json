@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tickerdeck",
+      "runtimeExecutable": ".venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--port", "8321"],
+      "cwd": "/Users/nhucdang/Desktop/tickerdeck",
+      "port": 8321
+    }
+  ]
+}

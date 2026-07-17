@@ -1,0 +1,24 @@
+{% if stale %}<p class="muted small">Fetching fresh quotes… some rows may still be blank.</p>{% endif %}
+<table>
+  <thead>
+    <tr><th>Symbol</th><th>Name</th><th class="num">Price</th><th class="num">Day</th><th>Trend</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="ticker-row" hx-get="/news/{{ r.symbol }}" hx-target="#news-panel" hx-swap="innerHTML">
+      <td class="sym">{{ r.symbol }}</td>
+      <td class="name">{{ r.name }}</td>
+      <td class="num">{% if r.price %}${{ "%.2f"|format(r.price) }}{% else %}—{% endif %}</td>
+      <td class="num {% if r.change_pct and r.change_pct >= 0 %}up{% elif r.change_pct %}down{% endif %}">
+        {% if r.change_pct is not none and r.price %}{{ "%+.2f"|format(r.change_pct) }}%{% else %}—{% endif %}
+      </td>
+      <td class="spark">{{ sparkline(r.series) | safe }}</td>
+      <td class="remove">
+        <button hx-delete="/watchlist/{{ r.symbol }}" hx-target="#rows" hx-swap="innerHTML"
+                hx-confirm="Remove {{ r.symbol }} from watchlist?"
+                onclick="event.stopPropagation()" title="Remove">✕</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
