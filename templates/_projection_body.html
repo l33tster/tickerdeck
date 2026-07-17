@@ -1,0 +1,20 @@
+<div class="chips">
+  {% for d, label in horizons %}
+  <button class="chip{% if d == days %} active{% endif %}"
+          hx-get="/panel/{{ symbol }}/projection?days={{ d }}" hx-target="#news-panel" hx-swap="innerHTML">{{ label }}</button>
+  {% endfor %}
+</div>
+{% if svg %}
+<div class="chart">{{ svg | safe }}</div>
+<div class="stat-row">
+  <div><span class="k">Now</span><span class="v">${{ "%.2f"|format(current) }}</span></div>
+  <div><span class="k">Median in {{ horizon_label }}</span>
+       <span class="v {% if median_pct >= 0 %}up{% else %}down{% endif %}">${{ "%.2f"|format(median) }} ({{ "%+.1f"|format(median_pct) }}%)</span></div>
+  <div><span class="k">80% range</span><span class="v">${{ "%.0f"|format(band_lo) }} – ${{ "%.0f"|format(band_hi) }}</span></div>
+  <div><span class="k">Volatility (ann.)</span><span class="v">{{ "%.0f"|format(vol) }}%</span></div>
+</div>
+<p class="disclaimer">Monte Carlo simulation (500 paths) calibrated on the past year's volatility.
+A cone of statistically plausible outcomes — not a forecast, not investment advice.</p>
+{% else %}
+<p class="muted">Not enough price history to simulate {{ symbol }} (needs ~3 months).</p>
+{% endif %}

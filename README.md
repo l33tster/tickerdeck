@@ -9,7 +9,12 @@ click any ticker to see its latest news. Built as a hobby project for a
 ## Features
 
 - **Watchlist table** — price, day change %, and an SVG sparkline per ticker
-- **Click a ticker → latest news** headlines with source and summary (htmx panel)
+- **Click a ticker → tabbed panel** with three views:
+  - **News** — latest headlines with source and summary
+  - **Chart** — 1M / 6M / 1Y price history with period stats
+  - **Projection** — Monte Carlo fan chart (500 GBM paths calibrated on the past
+    year's volatility): median path plus an 80% confidence band over 3M / 6M / 1Y.
+    A cone of statistically plausible outcomes — *not* a forecast or investment advice.
 - **Background poller** stores quotes in SQLite every 5 minutes, so trends build up over time
 - **Add/remove tickers** from the UI; new tickers are backfilled with intraday history
 - **Single container** — FastAPI + SQLite, no build step, no API keys
@@ -43,10 +48,12 @@ FastAPI + Jinja2 ◄─────────────────┘
 htmx frontend — table polls /rows every 60s; row click loads /news/{symbol}
 ```
 
-- `app/market.py` — yfinance wrappers (quotes, intraday backfill, news)
+- `app/market.py` — yfinance wrappers (quotes, intraday backfill, daily history, news)
 - `app/db.py` — SQLite schema and queries
 - `app/main.py` — routes, poller lifecycle, sparkline SVG renderer
-- `templates/` — one page plus two htmx partials
+- `app/projection.py` — geometric-Brownian-motion Monte Carlo simulation
+- `app/charts.py` — server-side SVG line and fan charts (no JS charting library)
+- `templates/` — one page plus htmx partials (rows + tabbed ticker panel)
 
 ## Notes
 

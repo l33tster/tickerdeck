@@ -1,0 +1,16 @@
+<div class="chips">
+  {% for p, label in periods %}
+  <button class="chip{% if p == period %} active{% endif %}"
+          hx-get="/panel/{{ symbol }}/chart?period={{ p }}" hx-target="#news-panel" hx-swap="innerHTML">{{ label }}</button>
+  {% endfor %}
+</div>
+{% if svg %}
+<div class="chart">{{ svg | safe }}</div>
+<div class="stat-row">
+  <div><span class="k">Period</span><span class="v {% if change >= 0 %}up{% else %}down{% endif %}">{{ "%+.1f"|format(change) }}%</span></div>
+  <div><span class="k">High</span><span class="v">${{ "%.2f"|format(high) }}</span></div>
+  <div><span class="k">Low</span><span class="v">${{ "%.2f"|format(low) }}</span></div>
+</div>
+{% else %}
+<p class="muted">Not enough price history for {{ symbol }}.</p>
+{% endif %}

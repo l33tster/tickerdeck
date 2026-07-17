@@ -1,9 +1,13 @@
 """yfinance wrappers: quotes, intraday history backfill, and news."""
 import logging
+import time
 
 import yfinance as yf
 
 log = logging.getLogger("tickerdeck.market")
+
+_daily_cache: dict[tuple[str, str], tuple[float, list]] = {}
+DAILY_CACHE_TTL = 600
 
 
 def fetch_quote(symbol: str) -> dict | None:
@@ -36,6 +40,23 @@ def fetch_intraday(symbol: str) -> list[tuple[float, float]]:
     except Exception:
         log.exception("history fetch failed for %s", symbol)
         return []
+
+
+def fetch_daily_closes(symbol: str, period: str = "1y") -> list[tuple[float, float]]:
+    """(timestamp, close) daily bars, cached for a few minutes per (symbol, period)."""
+    key = (symbol, period)
+    cached = _daily_cache.get(key)
+    if cached and time.time() - cached[0] < DAILY_CACHE_TTL:
+        return cached[1]
+    try:
+        hist = yf.Ticker(symbol).history(period=period, interval="1d")
+        points = [(idx.timestamp(), float(row["Close"])) for idx, row in hist.iterrows()]
+    except Exception:
+        log.exception("daily history fetch failed for %s", symbol)
+        points = []
+    if points:
+        _daily_cache[key] = (time.time(), points)
+    return points
 
 
 def fetch_news(symbol: str, limit: int = 8) -> list[dict]:

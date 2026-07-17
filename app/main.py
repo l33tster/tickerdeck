@@ -10,9 +10,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import db, market
+from datetime import datetime, timezone
+
+from app import charts, db, market, projection
 
 POLL_SECONDS = 300
+
+CHART_PERIODS = [("1mo", "1M"), ("6mo", "6M"), ("1y", "1Y")]
+HORIZONS = [(63, "3M"), (126, "6M"), (252, "1Y")]
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("tickerdeck")
@@ -124,10 +129,62 @@ def remove_ticker(request: Request, symbol: str):
     return render_rows(request)
 
 
-@app.get("/news/{symbol}", response_class=HTMLResponse)
-async def news(request: Request, symbol: str):
+def render_panel(request: Request, symbol: str, tab: str, **ctx) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "_panel.html", {"symbol": symbol, "tab": tab, **ctx}
+    )
+
+
+def _date_label(ts: float) -> str:
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%b %d, %Y")
+
+
+@app.get("/panel/{symbol}/news", response_class=HTMLResponse)
+async def panel_news(request: Request, symbol: str):
     symbol = symbol.upper()
     articles = await asyncio.to_thread(market.fetch_news, symbol)
-    return templates.TemplateResponse(
-        request, "_news.html", {"symbol": symbol, "articles": articles}
-    )
+    return render_panel(request, symbol, "news", articles=articles)
+
+
+@app.get("/panel/{symbol}/chart", response_class=HTMLResponse)
+async def panel_chart(request: Request, symbol: str, period: str = "6mo"):
+    symbol = symbol.upper()
+    if period not in dict(CHART_PERIODS):
+        period = "6mo"
+    points = await asyncio.to_thread(market.fetch_daily_closes, symbol, period)
+    ctx: dict = {"periods": CHART_PERIODS, "period": period, "svg": None}
+    if len(points) >= 2:
+        closes = [c for _, c in points]
+        ctx["svg"] = charts.line_chart(closes, _date_label(points[0][0]), "today")
+        ctx["high"], ctx["low"] = max(closes), min(closes)
+        ctx["change"] = (closes[-1] - closes[0]) / closes[0] * 100
+    return render_panel(request, symbol, "chart", **ctx)
+
+
+@app.get("/panel/{symbol}/projection", response_class=HTMLResponse)
+async def panel_projection(request: Request, symbol: str, days: int = 126):
+    symbol = symbol.upper()
+    if days not in dict(HORIZONS):
+        days = 126
+    horizon_label = dict(HORIZONS)[days]
+    points = await asyncio.to_thread(market.fetch_daily_closes, symbol, "1y")
+    closes = [c for _, c in points]
+    sim = projection.simulate(closes, days, seed_key=f"{symbol}:{days}")
+    ctx: dict = {"horizons": HORIZONS, "days": days, "svg": None}
+    if sim:
+        history = closes[-90:]
+        ctx["svg"] = charts.fan_chart(
+            history, sim["p10"], sim["p50"], sim["p90"],
+            _date_label(points[-len(history)][0]), f"+{horizon_label}",
+        )
+        current, median = closes[-1], sim["p50"][-1]
+        ctx.update(
+            current=current,
+            median=median,
+            median_pct=(median - current) / current * 100,
+            band_lo=sim["p10"][-1],
+            band_hi=sim["p90"][-1],
+            vol=sim["vol_annual"] * 100,
+            horizon_label=horizon_label,
+        )
+    return render_panel(request, symbol, "projection", **ctx)

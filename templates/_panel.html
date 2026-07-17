@@ -1,0 +1,12 @@
+<div class="panel-head">
+  <h2>{{ symbol }}</h2>
+  <nav class="tabs">
+    {% for t, label in [("news", "News"), ("chart", "Chart"), ("projection", "Projection")] %}
+    <button class="tab{% if tab == t %} active{% endif %}"
+            hx-get="/panel/{{ symbol }}/{{ t }}" hx-target="#news-panel" hx-swap="innerHTML">{{ label }}</button>
+    {% endfor %}
+  </nav>
+</div>
+{% if tab == "news" %}{% include "_news_body.html" %}
+{% elif tab == "chart" %}{% include "_chart_body.html" %}
+{% else %}{% include "_projection_body.html" %}{% endif %}
